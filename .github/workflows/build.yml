@@ -59,7 +59,7 @@ jobs:
         with:
           repository: uxlfoundation/oneTBB
           ref: ${{ matrix.tag }}
-          path: oneTBB
+          path: oneTBB  # inside the package dir; the CMake shim finds it there
           persist-credentials: false
 
       - name: Derive package version from tag
@@ -72,11 +72,15 @@ jobs:
       - name: Build wheels
         uses: pypa/cibuildwheel@v4.2.0
         env:
-          # Point the CMake build at the cloned oneTBB sources
-          ONE_TBB_SOURCE_DIR: ${{ github.workspace }}/oneTBB
+          # The CMake shim locates the cloned oneTBB sources relative to
+          # itself, so no path plumbing is needed here (host paths would not
+          # resolve inside the Linux build containers anyway).
           CIBW_ENVIRONMENT: >
-            ONE_TBB_SOURCE_DIR=$ONE_TBB_SOURCE_DIR
             SETUPTOOLS_SCM_PRETEND_VERSION_FOR_TBB4U=${{ steps.version.outputs.version }}
+          # The bundled libraries are loaded by explicit path via ctypes, so
+          # delocate's relocation is unnecessary and fails on the dylibs'
+          # build-tree install names. Skip repair on macOS.
+          CIBW_REPAIR_WHEEL_COMMAND_MACOS: ""
           # Shrink the matrix: build for CPython 3.12 only. Change or drop to
           # build every interpreter version cibuildwheel supports.
           CIBW_BUILD: cp312-*

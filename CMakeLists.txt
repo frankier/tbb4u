@@ -1,23 +1,27 @@
 # Thin packaging shim for the tbb4u PyPI distribution.
 #
 # This file does NOT define how oneTBB is built -- the full upstream CMake
-# project is consumed unmodified via add_subdirectory() below. The only job
-# done here is routing the built binaries into the 'tbb4u' package directory
-# so they end up inside the wheel.
+# project is consumed unmodified via add_subdirectory() below. The only jobs
+# done here are locating the oneTBB checkout and routing the built binaries
+# into the 'tbb4u' package directory so they end up inside the wheel.
 cmake_minimum_required(VERSION 3.16)
 project(tbb4u LANGUAGES CXX)
 
-# Location of an oneTBB checkout (CI clones uxlfoundation/oneTBB and points
-# this at it). Accepts a CMake variable or the ONE_TBB_SOURCE_DIR env var.
-set(ONE_TBB_SOURCE_DIR "" CACHE PATH "Path to an oneTBB source checkout")
-if(NOT ONE_TBB_SOURCE_DIR AND DEFINED ENV{ONE_TBB_SOURCE_DIR})
-    set(ONE_TBB_SOURCE_DIR "$ENV{ONE_TBB_SOURCE_DIR}"
-        CACHE PATH "Path to an oneTBB source checkout" FORCE)
+# Location of an oneTBB checkout. Defaults to a sibling 'oneTBB' directory
+# next to this file (how CI lays it out -- relative so it also resolves
+# inside cibuildwheel's Linux build containers, where host paths do not
+# exist). Override with the ONE_TBB_SOURCE_DIR environment variable.
+if(DEFINED ENV{ONE_TBB_SOURCE_DIR})
+    set(_tbb4u_one_tbb_src "$ENV{ONE_TBB_SOURCE_DIR}")
+else()
+    set(_tbb4u_one_tbb_src "${CMAKE_CURRENT_SOURCE_DIR}/oneTBB")
 endif()
-if(NOT ONE_TBB_SOURCE_DIR)
+set(ONE_TBB_SOURCE_DIR "${_tbb4u_one_tbb_src}" CACHE PATH
+    "Path to an oneTBB source checkout")
+if(NOT EXISTS "${ONE_TBB_SOURCE_DIR}/CMakeLists.txt")
     message(FATAL_ERROR
-        "ONE_TBB_SOURCE_DIR must point at a checkout of "
-        "https://github.com/uxlfoundation/oneTBB")
+        "ONE_TBB_SOURCE_DIR ('${ONE_TBB_SOURCE_DIR}') must contain an "
+        "checkout of https://github.com/uxlfoundation/oneTBB")
 endif()
 
 # Trim the upstream build to the runtime libraries only. These options exist
@@ -39,13 +43,24 @@ add_subdirectory(${ONE_TBB_SOURCE_DIR} ${CMAKE_BINARY_DIR}/oneTBB)
 # included too (ARCHIVE) because CMake falls back to default destinations for
 # artifact kinds that are not named; keeping them beside the DLLs keeps the
 # wheel contents predictable across platforms.
-install(TARGETS tbb tbbmalloc tbbmalloc_proxy
-        LIBRARY DESTINATION tbb4u
-        RUNTIME DESTINATION tbb4u
-        ARCHIVE DESTINATION tbb4u)
+#
+# Targets are installed individually: upstream does not define every target
+# on every platform (e.g. tbbmalloc_proxy does not exist on Windows ARM64).
+foreach(tbb4u_target IN ITEMS tbb tbbmalloc tbbmalloc_proxy)
+    if(TARGET ${tbb4u_target})
+        install(TARGETS ${tbb4u_target}
+                LIBRARY DESTINATION tbb4u
+                RUNTIME DESTINATION tbb4u
+                ARCHIVE DESTINATION tbb4u)
+    else()
+        message(STATUS "tbb4u: upstream defines no '${tbb4u_target}' "
+                       "target on this platform; skipping")
+    endif()
+endforeach()
 
-# Carry the upstream license texts along; declared as license-files in
-# pyproject.toml.
-install(FILES ${ONE_TBB_SOURCE_DIR}/LICENSE.txt
-              ${ONE_TBB_SOURCE_DIR}/third-party-programs.txt
-        DESTINATION tbb4u/licenses)
+# Carry the upstream license texts along.
+if(EXISTS "${ONE_TBB_SOURCE_DIR}/LICENSE.txt")
+    install(FILES ${ONE_TBB_SOURCE_DIR}/LICENSE.txt
+                  ${ONE_TBB_SOURCE_DIR}/third-party-programs.txt
+            DESTINATION tbb4u/licenses)
+endif()
