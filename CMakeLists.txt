@@ -44,9 +44,14 @@ add_subdirectory(${ONE_TBB_SOURCE_DIR} ${CMAKE_BINARY_DIR}/oneTBB)
 # artifact kinds that are not named; keeping them beside the DLLs keeps the
 # wheel contents predictable across platforms.
 #
+# tbbmalloc_proxy is deliberately NOT shipped: it is an LD_PRELOAD/
+# interposition shim with a hard DT_NEEDED on libtbbmalloc.so.2, which
+# auditwheel repair cannot resolve from wheel-internal paths -- and it has no
+# use inside a Python distribution anyway.
+#
 # Targets are installed individually: upstream does not define every target
-# on every platform (e.g. tbbmalloc_proxy does not exist on Windows ARM64).
-foreach(tbb4u_target IN ITEMS tbb tbbmalloc tbbmalloc_proxy)
+# on every platform.
+foreach(tbb4u_target IN ITEMS tbb tbbmalloc)
     if(TARGET ${tbb4u_target})
         install(TARGETS ${tbb4u_target}
                 LIBRARY DESTINATION tbb4u

@@ -3,9 +3,10 @@
 Wheels for [oneTBB](https://github.com/uxlfoundation/oneTBB) (oneAPI Thread
 Building Blocks), published to PyPI as [`tbb4u`](https://pypi.org/project/tbb4u/).
 
-Each wheel bundles the oneTBB shared libraries (`tbb`, `tbbmalloc`,
-`tbbmalloc_proxy`) built **unmodified** from an upstream release tag. The wheel
-version matches the packaged oneTBB release (e.g. `2023.1.0`).
+Each wheel bundles the oneTBB shared libraries (`tbb`, `tbbmalloc`) built
+**unmodified** from an upstream release tag. The wheel version matches the
+packaged oneTBB release (e.g. `2023.1.0`). The `tbbmalloc_proxy` interposition
+shim is not included.
 
 ## How it works
 
