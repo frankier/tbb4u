@@ -28,7 +28,9 @@ Upstream = "https://github.com/uxlfoundation/oneTBB"
 # The version is not tracked in this repo: CI derives it from the packaged
 # oneTBB tag and passes it in via SETUPTOOLS_SCM_PRETEND_VERSION_FOR_TBB4U.
 [tool.scikit-build]
-metadata.version.provider = "scikit_build_core.setuptools_scm"
+# NOTE: this moved from scikit_build_core.setuptools_scm to
+# scikit_build_core.metadata.setuptools_scm in scikit-build-core 0.11.
+metadata.version.provider = "scikit_build_core.metadata.setuptools_scm"
 build-dir = "build/{wheel_tag}"
 
 [tool.setuptools_scm]

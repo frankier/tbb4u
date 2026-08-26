@@ -21,14 +21,19 @@ if(NOT ONE_TBB_SOURCE_DIR)
 endif()
 
 # Trim the upstream build to the runtime libraries only. These options exist
-# in every tag packaged so far (v2021.13.x onward).
+# in every tag packaged so far (v2021.13.x onward). TBB_INSTALL is disabled so
+# upstream's own install rules (which target system layouts) don't fire; this
+# shim installs what the wheel needs instead.
 set(TBB_TEST OFF CACHE BOOL "" FORCE)
 set(TBB_EXAMPLES OFF CACHE BOOL "" FORCE)
 set(TBB_BENCHMARK OFF CACHE BOOL "" FORCE)
 set(TBB_STRICT OFF CACHE BOOL "" FORCE)
+set(TBB_INSTALL OFF CACHE BOOL "" FORCE)
 
-add_subdirectory(${ONE_TBB_SOURCE_DIR} ${CMAKE_BINARY_DIR}/oneTBB
-                 EXCLUDE_FROM_ALL)
+# NOTE: deliberately *not* EXCLUDE_FROM_ALL -- scikit-build-core builds the
+# default ('all') target before installing, so the libraries must be part of
+# it.
+add_subdirectory(${ONE_TBB_SOURCE_DIR} ${CMAKE_BINARY_DIR}/oneTBB)
 
 # Ship the shared libraries inside the Python package. Import/static libs are
 # included too (ARCHIVE) because CMake falls back to default destinations for
