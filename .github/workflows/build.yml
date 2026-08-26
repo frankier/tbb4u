@@ -81,9 +81,6 @@ jobs:
           # delocate's relocation is unnecessary and fails on the dylibs'
           # build-tree install names. Skip repair on macOS.
           CIBW_REPAIR_WHEEL_COMMAND_MACOS: ""
-          # Shrink the matrix: build for CPython 3.12 only. Change or drop to
-          # build every interpreter version cibuildwheel supports.
-          CIBW_BUILD: cp312-*
         with:
           output-dir: wheelhouse
 
