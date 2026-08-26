@@ -1,0 +1,138 @@
+name: Build and upload to PyPI
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build_wheels:
+    name: Build wheels for ${{ matrix.os }} (${{ matrix.tag }})
+    runs-on: ${{ matrix.runs-on }}
+    strategy:
+      fail-fast: false
+      matrix:
+        # Manually maintained list of oneTBB releases to package.
+        # To add a release, add its tag to every platform below.
+        include:
+          # ---------- linux ----------
+          - { os: linux-intel, runs-on: ubuntu-latest, tag: v2023.1.0 }
+          - { os: linux-intel, runs-on: ubuntu-latest, tag: v2022.3.0 }
+          - { os: linux-intel, runs-on: ubuntu-latest, tag: v2022.2.0 }
+          - { os: linux-intel, runs-on: ubuntu-latest, tag: v2022.1.0 }
+          - { os: linux-intel, runs-on: ubuntu-latest, tag: v2021.13.3 }
+          - { os: linux-arm, runs-on: ubuntu-24.04-arm, tag: v2023.1.0 }
+          - { os: linux-arm, runs-on: ubuntu-24.04-arm, tag: v2022.3.0 }
+          - { os: linux-arm, runs-on: ubuntu-24.04-arm, tag: v2022.2.0 }
+          - { os: linux-arm, runs-on: ubuntu-24.04-arm, tag: v2022.1.0 }
+          - { os: linux-arm, runs-on: ubuntu-24.04-arm, tag: v2021.13.3 }
+          # ---------- windows ----------
+          - { os: windows-intel, runs-on: windows-latest, tag: v2023.1.0 }
+          - { os: windows-intel, runs-on: windows-latest, tag: v2022.3.0 }
+          - { os: windows-intel, runs-on: windows-latest, tag: v2022.2.0 }
+          - { os: windows-intel, runs-on: windows-latest, tag: v2022.1.0 }
+          - { os: windows-intel, runs-on: windows-latest, tag: v2021.13.3 }
+          - { os: windows-arm, runs-on: windows-11-arm, tag: v2023.1.0 }
+          - { os: windows-arm, runs-on: windows-11-arm, tag: v2022.3.0 }
+          - { os: windows-arm, runs-on: windows-11-arm, tag: v2022.2.0 }
+          - { os: windows-arm, runs-on: windows-11-arm, tag: v2022.1.0 }
+          # oneTBB's Windows on ARM64 support is recent; drop this entry
+          # if the v2021.13.3 build turns out not to work there.
+          - { os: windows-arm, runs-on: windows-11-arm, tag: v2021.13.3 }
+          # ---------- macos ----------
+          - { os: macos-intel, runs-on: macos-15-intel, tag: v2023.1.0 } # macos-15-intel is the last x86_64 runner
+          - { os: macos-intel, runs-on: macos-15-intel, tag: v2022.3.0 }
+          - { os: macos-intel, runs-on: macos-15-intel, tag: v2022.2.0 }
+          - { os: macos-intel, runs-on: macos-15-intel, tag: v2022.1.0 }
+          - { os: macos-intel, runs-on: macos-15-intel, tag: v2021.13.3 }
+          - { os: macos-arm, runs-on: macos-latest, tag: v2023.1.0 } # macos-14+ (including latest) are ARM64 runners
+          - { os: macos-arm, runs-on: macos-latest, tag: v2022.3.0 }
+          - { os: macos-arm, runs-on: macos-latest, tag: v2022.2.0 }
+          - { os: macos-arm, runs-on: macos-latest, tag: v2022.1.0 }
+          - { os: macos-arm, runs-on: macos-latest, tag: v2021.13.3 }
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Clone oneTBB
+        uses: actions/checkout@v6
+        with:
+          repository: uxlfoundation/oneTBB
+          ref: ${{ matrix.tag }}
+          path: oneTBB
+          persist-credentials: false
+
+      - name: Derive package version from tag
+        id: version
+        shell: bash
+        run: echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
+        env:
+          TAG: ${{ matrix.tag }}
+
+      - name: Build wheels
+        uses: pypa/cibuildwheel@v4.2.0
+        env:
+          # Point the CMake build at the cloned oneTBB sources
+          ONE_TBB_SOURCE_DIR: ${{ github.workspace }}/oneTBB
+          CIBW_ENVIRONMENT: >
+            ONE_TBB_SOURCE_DIR=$ONE_TBB_SOURCE_DIR
+            SETUPTOOLS_SCM_PRETEND_VERSION_FOR_TBB4U=${{ steps.version.outputs.version }}
+          # Shrink the matrix: build for CPython 3.12 only. Change or drop to
+          # build every interpreter version cibuildwheel supports.
+          CIBW_BUILD: cp312-*
+        with:
+          output-dir: wheelhouse
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cibw-wheels-${{ matrix.os }}-${{ matrix.tag }}-${{ strategy.job-index }}
+          path: ./wheelhouse/*.whl
+
+  build_sdist:
+    name: Build source distribution (${{ matrix.tag }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # Keep in sync with the tags in build_wheels above.
+        tag: [v2023.1.0, v2022.3.0, v2022.2.0, v2022.1.0, v2021.13.3]
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Derive package version from tag
+        id: version
+        shell: bash
+        run: echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
+        env:
+          TAG: ${{ matrix.tag }}
+
+      - name: Build SDist
+        run: pipx run build --sdist
+        env:
+          SETUPTOOLS_SCM_PRETEND_VERSION_FOR_TBB4U: ${{ steps.version.outputs.version }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cibw-sdist-${{ matrix.tag }}
+          path: dist/*.tar.gz
+
+  upload_pypi:
+    needs: [build_wheels, build_sdist]
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v5
+        with:
+          # unpacks all CIBW artifacts into dist/
+          pattern: cibw-*
+          path: dist
+          merge-multiple: true
+
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        # To test uploads to TestPyPI, uncomment the following:
+        # with:
+        #   repository-url: https://test.pypi.org/legacy/

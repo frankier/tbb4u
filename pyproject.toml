@@ -1,0 +1,35 @@
+[build-system]
+requires = ["scikit-build-core>=0.11", "setuptools-scm>=8"]
+build-backend = "scikit_build_core.build"
+
+[project]
+name = "tbb4u"
+description = "Batteries-included wheels for oneAPI Thread Building Blocks (oneTBB)"
+readme = "README.md"
+license = "Apache-2.0"
+authors = [{ name = "tbb4u maintainers" }]
+requires-python = ">=3.9"
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+dynamic = ["version"]
+
+[project.urls]
+Upstream = "https://github.com/uxlfoundation/oneTBB"
+
+# The version is not tracked in this repo: CI derives it from the packaged
+# oneTBB tag and passes it in via SETUPTOOLS_SCM_PRETEND_VERSION_FOR_TBB4U.
+[tool.scikit-build]
+metadata.version.provider = "scikit_build_core.setuptools_scm"
+build-dir = "build/{wheel_tag}"
+
+[tool.setuptools_scm]
+fallback_version = "0.0.0"
