@@ -78,12 +78,15 @@ jobs:
     steps:
       # JS-based actions run Node inside the container. Make sure git is
       # present (not guaranteed on the musllinux images) and that the
-      # checkout owned by the host UID is trusted.
+      # checkout owned by the host UID is trusted. The musllinux images ship
+      # a git whose system config lives in /usr/local/etc but without that
+      # directory existing, so create it before writing there.
       - name: Prepare Linux build container
         if: matrix.container != ''
         shell: bash
         run: |
           command -v git >/dev/null 2>&1 || (dnf install -y git || apk add git)
+          mkdir -p /usr/local/etc
           git config --system --add safe.directory '*'
 
       - uses: actions/checkout@v6
