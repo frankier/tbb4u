@@ -8,14 +8,11 @@ description = "Batteries-included wheels for oneAPI Thread Building Blocks (oneT
 readme = "README.md"
 license = "Apache-2.0"
 authors = [{ name = "tbb4u maintainers" }]
-requires-python = ">=3.12"
+requires-python = ">=3.8"
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.12",
-    "Programming Language :: Python :: 3.13",
-    "Programming Language :: Python :: 3.14",
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 dynamic = ["version"]
@@ -30,6 +27,13 @@ Upstream = "https://github.com/uxlfoundation/oneTBB"
 # scikit_build_core.metadata.setuptools_scm in scikit-build-core 0.11.
 metadata.version.provider = "scikit_build_core.metadata.setuptools_scm"
 build-dir = "build/{wheel_tag}"
+
+# The bundled oneTBB libraries carry no CPython ABI dependence (they are
+# loaded by path via ctypes), so wheels are tagged py3-none-<platform>:
+# one wheel per OS/arch works on every supported Python 3. On Linux this
+# yields py3-none-linux_<arch>, which CI post-processes with auditwheel
+# into proper manylinux/musllinux tags.
+wheel.py-api = "py3"
 
 [tool.setuptools_scm]
 fallback_version = "0.0.0"

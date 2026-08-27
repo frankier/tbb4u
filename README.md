@@ -8,6 +8,12 @@ Each wheel bundles the oneTBB shared libraries (`tbb`, `tbbmalloc`) built
 packaged oneTBB release (e.g. `2023.1.0`). The `tbbmalloc_proxy` interposition
 shim is not included.
 
+Wheels are tagged `py3-none-<platform>` and are independent of the Python
+version and ABI: a single wheel per OS/architecture/libc covers every
+supported Python (3.8+). Platforms covered: manylinux_2_28 and musllinux_1_2
+(x86_64, aarch64), Windows x64 and ARM64, macOS 10.15+ x86_64 and macOS 11+
+ARM64.
+
 ## How it works
 
 - `CMakeLists.txt` here is only a thin shim: it `add_subdirectory()`s a checkout
@@ -15,9 +21,14 @@ shim is not included.
   environment variable) and installs the built libraries into the `tbb4u`
   package directory. All build logic lives upstream.
 - `.github/workflows/build.yml` is manually triggered and builds a matrix of
-  OS (`windows`/`linux`/`macos`) x architecture (`intel`/`arm`) x oneTBB tag
-  with [cibuildwheel](https://cibuildwheel.pypa.io/), then uploads everything to
-  PyPI via trusted publishing.
+  OS (`windows`/`linux`/`macos`) x architecture (`intel`/`arm`) x libc
+  (glibc/musl) x oneTBB tag using plain `python -m build`, then uploads
+  everything to PyPI via trusted publishing. Linux builds run inside pypa's
+  official [manylinux/musllinux containers](https://quay.io/organization/pypa)
+  to pin the libc compatibility floor, and auditwheel validates and retags
+  those wheels. cibuildwheel is deliberately not used because it refuses to
+  build wheels that are not tied to a specific CPython ABI
+  ([pypa/cibuildwheel#255](https://github.com/pypa/cibuildwheel/issues/255)).
 - To package a new oneTBB release, add its tag to the matrix in the workflow
   (both `build_wheels` and `build_sdist`).
 

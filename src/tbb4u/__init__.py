@@ -1,7 +1,8 @@
 """tbb4u: wheels for oneAPI Thread Building Blocks (oneTBB).
 
-This distribution bundles the oneTBB shared libraries (tbb, tbbmalloc,
-tbbmalloc_proxy) built from the official uxlfoundation/oneTBB sources.
+This distribution bundles the oneTBB shared libraries (tbb, tbbmalloc)
+built from the official uxlfoundation/oneTBB sources. Wheels are tagged
+py3-none-<platform>: they are independent of the Python version and ABI.
 """
 
 from __future__ import annotations
