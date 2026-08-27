@@ -13,11 +13,12 @@ jobs:
   build_wheels:
     name: Build wheels (${{ matrix.name }} / ${{ matrix.tag }})
     runs-on: ${{ matrix.runs-on }}
-    # Linux builds run inside pypa's official build containers so the glibc/
-    # musl compatibility floor is pinned by the image, exactly as cibuildwheel
-    # would have done. The container also provides the Python used to drive
-    # the build.
-    container: ${{ matrix.container }}
+    # NOTE: the Linux matrix entries carry a pypa build container image in
+    # matrix.container, but it is NOT used as the job-level `container:`.
+    # JavaScript actions cannot run in Alpine-based containers on ARM64
+    # runners (GitHub ships an x86_64-only node for musl), so checkout and
+    # upload-artifact must run on the host and the image is driven via
+    # `docker run` below, exactly as cibuildwheel does.
 
     strategy:
       fail-fast: false
@@ -76,19 +77,6 @@ jobs:
       MACOSX_DEPLOYMENT_TARGET: ${{ matrix.macos-target || '11.0' }}
 
     steps:
-      # JS-based actions run Node inside the container. Make sure git is
-      # present (not guaranteed on the musllinux images) and that the
-      # checkout owned by the host UID is trusted. The musllinux images ship
-      # a git whose system config lives in /usr/local/etc but without that
-      # directory existing, so create it before writing there.
-      - name: Prepare Linux build container
-        if: matrix.container != ''
-        shell: bash
-        run: |
-          command -v git >/dev/null 2>&1 || (dnf install -y git || apk add git)
-          mkdir -p /usr/local/etc
-          git config --system --add safe.directory '*'
-
       - uses: actions/checkout@v6
         with:
           persist-credentials: false
@@ -101,8 +89,8 @@ jobs:
           path: oneTBB  # inside the package dir; the CMake shim finds it there
           persist-credentials: false
 
-      # Not needed inside the Linux containers (they ship their own Python);
-      # provides the build interpreter on Windows/macOS.
+      # Provides the build interpreter on Windows/macOS; the Linux container
+      # images ship their own Pythons.
       - uses: actions/setup-python@v6
         if: matrix.container == ''
         with:
@@ -115,18 +103,12 @@ jobs:
         env:
           TAG: ${{ matrix.tag }}
 
-      # The pypa Linux containers ship several Pythons under /opt/python but
-      # no bare 'python' on PATH; pick one explicitly there.
       - name: Build wheel
+        if: matrix.container == ''
         shell: bash
         run: |
-          if [ -x /opt/python/cp312-cp312/bin/python ]; then
-              PYBIN=/opt/python/cp312-cp312/bin/python
-          else
-              PYBIN=python
-          fi
-          "$PYBIN" -m pip install --upgrade build
-          "$PYBIN" -m build --wheel --outdir wheelhouse-unpatched
+          python -m pip install --upgrade build
+          python -m build --wheel --outdir wheelhouse-unpatched
         env:
           SETUPTOOLS_SCM_PRETEND_VERSION_FOR_TBB4U: ${{ steps.version.outputs.version }}
 
@@ -135,20 +117,33 @@ jobs:
       # version floor and retags it (all external deps -- libc, libstdc++,
       # libgcc_s -- are whitelisted by the policy, so nothing gets vendored).
       # No repair is needed on Windows/macOS: the libraries load by explicit
-      # path via ctypes.
-      - name: Validate and retag Linux wheels
+      # path via ctypes. The checkout seen through the bind mount is owned by
+      # the host runner UID, hence the safe.directory override (the musllinux
+      # git keeps its system config in /usr/local/etc, which the image lacks,
+      # so create it first).
+      - name: Build and validate Linux wheels
         if: matrix.container != ''
         shell: bash
         run: |
-          if [ -x /opt/python/cp312-cp312/bin/python ]; then
-              PYBIN=/opt/python/cp312-cp312/bin/python
-          else
-              PYBIN=python3
-          fi
-          "$PYBIN" -m pip install --upgrade auditwheel
-          "$(dirname "$PYBIN")/auditwheel" repair --plat ${{ matrix.plat }} \
-              -w wheelhouse wheelhouse-unpatched/*.whl
-          rm -rf wheelhouse-unpatched
+          docker run --rm -i \
+              -v "$PWD":/io -w /io \
+              -e SETUPTOOLS_SCM_PRETEND_VERSION_FOR_TBB4U="${{ steps.version.outputs.version }}" \
+              -e PLAT=${{ matrix.plat }} \
+              ${{ matrix.container }} bash -exc '
+                command -v git >/dev/null 2>&1 || (dnf install -y git || apk add git)
+                mkdir -p /usr/local/etc
+                git config --system --add safe.directory "*"
+                if [ -x /opt/python/cp312-cp312/bin/python ]; then
+                    PYBIN=/opt/python/cp312-cp312/bin/python
+                else
+                    PYBIN=python3
+                fi
+                "$PYBIN" -m pip install --upgrade build auditwheel
+                "$PYBIN" -m build --wheel --outdir wheelhouse-unpatched /io
+                auditwheel repair --plat "${PLAT}" \
+                    -w /io/wheelhouse /io/wheelhouse-unpatched/*.whl
+                rm -rf /io/wheelhouse-unpatched
+              '
 
       - name: Collect Windows/macOS wheels
         if: matrix.container == ''
