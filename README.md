@@ -1,5 +1,41 @@
 # tbb4u
 
+## Why?
+
+[`tbb` publishes really limited wheels to PyPI (just two)](https://github.com/uxlfoundation/oneTBB/issues/1972). Most notable is the lack of any ARM images. This repo builds the reset with GitHub Actions and uploads them to PyPI as [`tbb4u`](https://pypi.org/project/tbb4u/). We build extra images like musl based ones while we're at it.
+
+The wheels are published with trusted publishing using the build scripts in this repo, and are provided as-is.
+
+## Usage
+
+If you're working on a project you can just install `tbb4u` instead of `tbb`:
+
+```bash
+uv add tbb4u
+```
+
+If you need to use a library which uses tbb you can override the dependencies.
+
+```toml
+[tool.uv]
+override-dependencies = [
+  { package = { name = "tbbusinglib" }, dependencies = ["tbb4u"] },
+]
+exclude-dependencies = [
+  { package = { name = "tbbusinglib-parent" }, dependencies = ["tbb"] },
+]
+```
+
+With any luck you'll be able to remove these when upstream remembers that tbb isn't meant to just be and Intel project anymore given ARM is a member of the UXL Foundation(!)
+
+---
+
+The rest of the README is from ze robot.
+
+⬇️ 🤖 ⬇️
+
+## What?
+
 Wheels for [oneTBB](https://github.com/uxlfoundation/oneTBB) (oneAPI Thread
 Building Blocks), published to PyPI as [`tbb4u`](https://pypi.org/project/tbb4u/).
 
@@ -32,14 +68,6 @@ ARM64.
 - To package a new oneTBB release, add its tag to the matrix in the workflow
   (both `build_wheels` and `build_sdist`).
 
-## Usage
-
-```python
-import tbb4u
-
-tbb4u.__version__   # e.g. "2023.1.0"
-lib = tbb4u.load()  # ctypes handle to the bundled libtbb
-```
 
 ## License
 
