@@ -194,12 +194,19 @@ jobs:
     permissions:
       id-token: write
     steps:
-      - uses: actions/download-artifact@v5
+      - name: Download wheels
+        uses: actions/download-artifact@v5
         with:
-          # unpacks all wheel/sdist artifacts into dist/
-          pattern: |
-            wheels-*
-            sdists-*
+          # Wheel artifacts are merged directly into dist/.
+          pattern: wheels-*
+          path: dist
+          merge-multiple: true
+
+      - name: Download SDists
+        uses: actions/download-artifact@v5
+        with:
+          # SDist artifacts are merged directly into dist/.
+          pattern: sdists-*
           path: dist
           merge-multiple: true
 
