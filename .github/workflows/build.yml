@@ -1,11 +1,5 @@
 name: Build and upload to PyPI
 
-# The bundled oneTBB libraries carry no CPython ABI dependence (they are
-# loaded by path via ctypes), so wheels are tagged py3-none-<platform>: one
-# wheel per OS/arch/libc works on every supported Python 3. This is why plain
-# build tooling is used instead of cibuildwheel (which refuses to build
-# non-interpreter-specific wheels; see pypa/cibuildwheel#255).
-
 on:
   workflow_dispatch:
 
@@ -13,13 +7,6 @@ jobs:
   build_wheels:
     name: Build wheels (${{ matrix.name }} / ${{ matrix.tag }})
     runs-on: ${{ matrix.runs-on }}
-    # NOTE: the Linux matrix entries carry a pypa build container image in
-    # matrix.container, but it is NOT used as the job-level `container:`.
-    # JavaScript actions cannot run in Alpine-based containers on ARM64
-    # runners (GitHub ships an x86_64-only node for musl), so checkout and
-    # upload-artifact must run on the host and the image is driven via
-    # `docker run` below, exactly as cibuildwheel does.
-
     strategy:
       fail-fast: false
       matrix:
@@ -27,27 +14,27 @@ jobs:
         # To add a release, add its tag to every platform below.
         include:
           # ---------- linux (glibc, manylinux_2_28) ----------
-          - { name: linux-intel, runs-on: ubuntu-latest, container: quay.io/pypa/manylinux_2_28_x86_64, plat: manylinux_2_28_x86_64, tag: v2023.1.0 }
-          - { name: linux-intel, runs-on: ubuntu-latest, container: quay.io/pypa/manylinux_2_28_x86_64, plat: manylinux_2_28_x86_64, tag: v2022.3.0 }
-          - { name: linux-intel, runs-on: ubuntu-latest, container: quay.io/pypa/manylinux_2_28_x86_64, plat: manylinux_2_28_x86_64, tag: v2022.2.0 }
-          - { name: linux-intel, runs-on: ubuntu-latest, container: quay.io/pypa/manylinux_2_28_x86_64, plat: manylinux_2_28_x86_64, tag: v2022.1.0 }
-          - { name: linux-intel, runs-on: ubuntu-latest, container: quay.io/pypa/manylinux_2_28_x86_64, plat: manylinux_2_28_x86_64, tag: v2021.13.3 }
-          - { name: linux-arm, runs-on: ubuntu-24.04-arm, container: quay.io/pypa/manylinux_2_28_aarch64, plat: manylinux_2_28_aarch64, tag: v2023.1.0 }
-          - { name: linux-arm, runs-on: ubuntu-24.04-arm, container: quay.io/pypa/manylinux_2_28_aarch64, plat: manylinux_2_28_aarch64, tag: v2022.3.0 }
-          - { name: linux-arm, runs-on: ubuntu-24.04-arm, container: quay.io/pypa/manylinux_2_28_aarch64, plat: manylinux_2_28_aarch64, tag: v2022.2.0 }
-          - { name: linux-arm, runs-on: ubuntu-24.04-arm, container: quay.io/pypa/manylinux_2_28_aarch64, plat: manylinux_2_28_aarch64, tag: v2022.1.0 }
-          - { name: linux-arm, runs-on: ubuntu-24.04-arm, container: quay.io/pypa/manylinux_2_28_aarch64, plat: manylinux_2_28_aarch64, tag: v2021.13.3 }
+          - { name: linux-intel, runs-on: ubuntu-latest, tag: v2023.1.0 }
+          - { name: linux-intel, runs-on: ubuntu-latest, tag: v2022.3.0 }
+          - { name: linux-intel, runs-on: ubuntu-latest, tag: v2022.2.0 }
+          - { name: linux-intel, runs-on: ubuntu-latest, tag: v2022.1.0 }
+          - { name: linux-intel, runs-on: ubuntu-latest, tag: v2021.13.3 }
+          - { name: linux-arm, runs-on: ubuntu-24.04-arm, tag: v2023.1.0 }
+          - { name: linux-arm, runs-on: ubuntu-24.04-arm, tag: v2022.3.0 }
+          - { name: linux-arm, runs-on: ubuntu-24.04-arm, tag: v2022.2.0 }
+          - { name: linux-arm, runs-on: ubuntu-24.04-arm, tag: v2022.1.0 }
+          - { name: linux-arm, runs-on: ubuntu-24.04-arm, tag: v2021.13.3 }
           # ---------- linux (musl, musllinux_1_2) ----------
-          - { name: musl-linux-intel, runs-on: ubuntu-latest, container: quay.io/pypa/musllinux_1_2_x86_64, plat: musllinux_1_2_x86_64, tag: v2023.1.0 }
-          - { name: musl-linux-intel, runs-on: ubuntu-latest, container: quay.io/pypa/musllinux_1_2_x86_64, plat: musllinux_1_2_x86_64, tag: v2022.3.0 }
-          - { name: musl-linux-intel, runs-on: ubuntu-latest, container: quay.io/pypa/musllinux_1_2_x86_64, plat: musllinux_1_2_x86_64, tag: v2022.2.0 }
-          - { name: musl-linux-intel, runs-on: ubuntu-latest, container: quay.io/pypa/musllinux_1_2_x86_64, plat: musllinux_1_2_x86_64, tag: v2022.1.0 }
-          - { name: musl-linux-intel, runs-on: ubuntu-latest, container: quay.io/pypa/musllinux_1_2_x86_64, plat: musllinux_1_2_x86_64, tag: v2021.13.3 }
-          - { name: musl-linux-arm, runs-on: ubuntu-24.04-arm, container: quay.io/pypa/musllinux_1_2_aarch64, plat: musllinux_1_2_aarch64, tag: v2023.1.0 }
-          - { name: musl-linux-arm, runs-on: ubuntu-24.04-arm, container: quay.io/pypa/musllinux_1_2_aarch64, plat: musllinux_1_2_aarch64, tag: v2022.3.0 }
-          - { name: musl-linux-arm, runs-on: ubuntu-24.04-arm, container: quay.io/pypa/musllinux_1_2_aarch64, plat: musllinux_1_2_aarch64, tag: v2022.2.0 }
-          - { name: musl-linux-arm, runs-on: ubuntu-24.04-arm, container: quay.io/pypa/musllinux_1_2_aarch64, plat: musllinux_1_2_aarch64, tag: v2022.1.0 }
-          - { name: musl-linux-arm, runs-on: ubuntu-24.04-arm, container: quay.io/pypa/musllinux_1_2_aarch64, plat: musllinux_1_2_aarch64, tag: v2021.13.3 }
+          - { name: musl-linux-intel, runs-on: ubuntu-latest, tag: v2023.1.0 }
+          - { name: musl-linux-intel, runs-on: ubuntu-latest, tag: v2022.3.0 }
+          - { name: musl-linux-intel, runs-on: ubuntu-latest, tag: v2022.2.0 }
+          - { name: musl-linux-intel, runs-on: ubuntu-latest, tag: v2022.1.0 }
+          - { name: musl-linux-intel, runs-on: ubuntu-latest, tag: v2021.13.3 }
+          - { name: musl-linux-arm, runs-on: ubuntu-24.04-arm, tag: v2023.1.0 }
+          - { name: musl-linux-arm, runs-on: ubuntu-24.04-arm, tag: v2022.3.0 }
+          - { name: musl-linux-arm, runs-on: ubuntu-24.04-arm, tag: v2022.2.0 }
+          - { name: musl-linux-arm, runs-on: ubuntu-24.04-arm, tag: v2022.1.0 }
+          - { name: musl-linux-arm, runs-on: ubuntu-24.04-arm, tag: v2021.13.3 }
           # ---------- windows ----------
           - { name: windows-intel, runs-on: windows-latest, tag: v2023.1.0 }
           - { name: windows-intel, runs-on: windows-latest, tag: v2022.3.0 }
@@ -89,13 +76,6 @@ jobs:
           path: oneTBB  # inside the package dir; the CMake shim finds it there
           persist-credentials: false
 
-      # Provides the build interpreter on Windows/macOS; the Linux container
-      # images ship their own Pythons.
-      - uses: actions/setup-python@v6
-        if: matrix.container == ''
-        with:
-          python-version: "3.12"
-
       - name: Derive package version from tag
         id: version
         shell: bash
@@ -103,54 +83,24 @@ jobs:
         env:
           TAG: ${{ matrix.tag }}
 
-      - name: Build wheel
-        if: matrix.container == ''
-        shell: bash
-        run: |
-          python -m pip install --upgrade build
-          python -m build --wheel --outdir wheelhouse-unpatched
+      # One wheel per CPython version (cp3??-* skips free-threaded builds).
+      # On Linux cibuildwheel runs auditwheel (retagging to manylinux/musllinux); the
+      # Windows/macOS libraries load by explicit path via ctypes, so no
+      # repair is needed there.
+      - name: Build wheels
+        uses: pypa/cibuildwheel@v3.2.1
+        with:
+          output-dir: wheelhouse
         env:
+          CIBW_BUILD: ${{ contains(matrix.name, 'musl') && 'cp3??-musllinux_*' || startsWith(matrix.name, 'linux') && 'cp3??-manylinux_*' || 'cp3??-*' }}
+          CIBW_MANYLINUX_X86_64_IMAGE: manylinux_2_28
+          CIBW_MANYLINUX_AARCH64_IMAGE: manylinux_2_28
+          CIBW_MUSLLINUX_X86_64_IMAGE: musllinux_1_2
+          CIBW_MUSLLINUX_AARCH64_IMAGE: musllinux_1_2
+          CIBW_REPAIR_WHEEL_COMMAND_MACOS: ""
+          CIBW_REPAIR_WHEEL_COMMAND_WINDOWS: ""
+          CIBW_ENVIRONMENT_PASS_LINUX: SETUPTOOLS_SCM_PRETEND_VERSION_FOR_TBB4U
           SETUPTOOLS_SCM_PRETEND_VERSION_FOR_TBB4U: ${{ steps.version.outputs.version }}
-
-      # On Linux, scikit-build-core emits a conservative py3-none-linux_<arch>
-      # wheel. auditwheel validates that no symbols exceed the target libc's
-      # version floor and retags it (all external deps -- libc, libstdc++,
-      # libgcc_s -- are whitelisted by the policy, so nothing gets vendored).
-      # No repair is needed on Windows/macOS: the libraries load by explicit
-      # path via ctypes. The checkout seen through the bind mount is owned by
-      # the host runner UID, hence the safe.directory override (the musllinux
-      # git keeps its system config in /usr/local/etc, which the image lacks,
-      # so create it first).
-      - name: Build and validate Linux wheels
-        if: matrix.container != ''
-        shell: bash
-        run: |
-          docker run --rm -i \
-              -v "$PWD":/io -w /io \
-              -e SETUPTOOLS_SCM_PRETEND_VERSION_FOR_TBB4U="${{ steps.version.outputs.version }}" \
-              -e PLAT=${{ matrix.plat }} \
-              ${{ matrix.container }} bash -exc '
-                command -v git >/dev/null 2>&1 || (dnf install -y git || apk add git)
-                mkdir -p /usr/local/etc
-                git config --system --add safe.directory "*"
-                if [ -x /opt/python/cp312-cp312/bin/python ]; then
-                    PYBIN=/opt/python/cp312-cp312/bin/python
-                else
-                    PYBIN=python3
-                fi
-                "$PYBIN" -m pip install --upgrade build auditwheel
-                "$PYBIN" -m build --wheel --outdir wheelhouse-unpatched /io
-                auditwheel repair --plat "${PLAT}" \
-                    -w /io/wheelhouse /io/wheelhouse-unpatched/*.whl
-                rm -rf /io/wheelhouse-unpatched
-              '
-
-      - name: Collect Windows/macOS wheels
-        if: matrix.container == ''
-        shell: bash
-        run: |
-          mkdir wheelhouse
-          mv wheelhouse-unpatched/* wheelhouse/
 
       - uses: actions/upload-artifact@v4
         with:

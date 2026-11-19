@@ -44,9 +44,7 @@ Each wheel bundles the oneTBB shared libraries (`tbb`, `tbbmalloc`) built
 packaged oneTBB release (e.g. `2023.1.0`). The `tbbmalloc_proxy` interposition
 shim is not included.
 
-Wheels are tagged `py3-none-<platform>` and are independent of the Python
-version and ABI: a single wheel per OS/architecture/libc covers every
-supported Python (3.8+). Platforms covered: manylinux_2_28 and musllinux_1_2
+Wheels are built for each supported CPython version (3.8+). Platforms covered: manylinux_2_28 and musllinux_1_2
 (x86_64, aarch64), Windows x64 and ARM64, macOS 10.15+ x86_64 and macOS 11+
 ARM64.
 
